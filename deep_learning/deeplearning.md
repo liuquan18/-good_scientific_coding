@@ -1,18 +1,6 @@
 # 不可能的任务：用深度学习模型预测NAO日指数
 
-深度学习的话题似已不如前两年火了。得益于网上五花八门的教程，每个人都能讲五分钟深度学习。**但深度学习的门槛已经降到和EOF分解这样的统计方法一样高了么？**
 
-一方面，深度学习被过分标榜为一种独特的算法，使有心尝试的人总过分评估使用深度学习算法解决自己问题的必要性。另一方面，深度学习算法框架pytroch, tensorflow等给人一种新的计算机语言的即视感。
-
-就使用而言，基础深度学习模型的数学过程并不复杂。当然，深度学习模型需要调参，不会像传统算法那样，给一个输入进去，就有一个固定的输出结果，需要大量的尝试。至于深度学习框架，Pytorch和Numpy的初学成本差不多。相比于网上零星的教程，本文建议想应用这类算法的同学接受系统的训练，比如上课，尤其是需要交作业那种，使深度学习算法像其他所有常用算法一样，成为一个你可以想用就能用的东西。
-
-这学期选修了一门《Practical Deep Learning with Climate Data》的课，算是终于了了之前一直上理论课，却不敢实操的遗憾。理论部分很简单，所以我很少去上课。但这门课最大的价值在于练习，每节课后都会有一个notebook，实话说，作业量非常大。但这也是这门课最大的价值所在。练习甚至包含一个入门python的notebook。刚开始的时候，所有练习是不允许用pytorch的，所以手敲函数会让你对模型的训练过程有更深刻的理解。到后面模型变复杂之后，开始使用pytroch自带的函数，跟着做完这些作业，pytorch 无非就是一个python的包而已。
-
-因为是第一次开课，我不好意思直接把作业直接放到GitHub开源。我将课件和代码上传到了谷歌云盘：https://drive.google.com/drive/folders/1gLsVDVIEdq-21RBXwKJEq5yUZW0g8kNE?usp=sharing 因为notebook直接可以在colab里运行，所以比较推荐谷歌云盘。当然如果因为网络原因无法获取，也可以在这里下载：https://owncloud.gwdg.de/index.php/s/mYPlh7rYnhypveM 
-
-> **NOTE**: 该资源（包括notebook和PDF）著作权归David Greenberg，该分享链接仅用于学习交流。任何人未经David Greenberg本人允许，不得将该资源用于任何商业用途。
-
-下面分享我的结课project，利用seq2seq model预测NAO daily index。
 
 # Predicting daily North Atlantic Oscillation daily index using a seq2seq model
 
@@ -22,34 +10,273 @@
 
 北大西洋涛动（North Atlantic Oscillation, NAO）
 
-<img src="/Users/liuquan/Library/Application Support/typora-user-images/image-20220730142457746.png" alt="image-20220730142457746" style="zoom:50%;" />
+<img src="/Users/liuquan/Documents/wechat/deep_learning/NAO_pattern.png" alt="image-20220730142457746" style="zoom:50%;" />
 
 图1. 500hpa位势高度表示的北大西洋涛动的空间模式（左）和时间序列（右）。
 
 尽管如此，预测NAO指数的努力从未停止。比如近期Met Office Seasonal Prediction System (GloSea5) (Nick Dunstone, Doug Smith, and Adam Scaife, et al., 2016) 展示了利用物理模型预测下一年NAO冬季指数的效果。该研究表明，四个指数对预测NAO指数有重要指导意义，分别是: the El Niño–Southern Oscillation (ENSO) in the tropical Pacific; the Atlantic SST tripole pattern (AST) that has been linked to NAO variations in early winter; the sea-ice coverage (SIC) in the Kara Sea region; and the stratospheric polar vortex strength (SPVS) via which many different drivers can act.
 
-<img src="/Users/liuquan/Library/Application Support/typora-user-images/image-20220730153527743.png" alt="image-20220730153527743" style="zoom:50%;" />
+<img src="/Users/liuquan/Documents/wechat/deep_learning/img2_fourindex.png" alt="image-20220730154934589" style="zoom:50%;" />
+
+Dunstone, Nick, et al. "Skilful predictions of the winter North Atlantic Oscillation one year ahead." *Nature Geoscience* 9.11 (2016): 809-814.
 
 本项目利用上述四个指数，来预测下一年的NAO指数。相比于上述研究中预测冬季（季度平均）指数，本项目预测冬季每日指数，当然，这几乎是不可能的任务。
 
 # 数据和方法
 
-The data used in this project comes from MPI-Grand Ensemble. In historical run, there are totally 100 ensembles, providing a big dataset to train a deep learning model. The five indexes are firstly calculated: NAO is represented as the principle components of EOF analysis over 500hpa geopotential height. ENSO and AST is calculated as the field mean of SST over tropical Pacific and North Atlantic. SIC is the evolution of spatial averaged Kara Sea ice. Since no daily output of MPI-GE over 50hpa is available, the SPVS index is calculated over 200hpa. 
+The data used in this project comes from MPI-Grand Ensemble. In historical run, there are totally 100 ensembles, providing a big dataset to train a deep learning model. The five indexes are firstly calculated: NAO is represented as the principle components of EOF analysis over 500hpa geopotential height. ENSO and AST is calculated as the field mean of SST over tropical Pacific and North Atlantic. SIC is the evolution of spatial averaged Kara Sea ice. Since no daily output of MPI-GE over 50hpa is available, the SPVS index is calculated over 200hpa. The data pre-processor is not include in this blog.
 
-The project is based on Seq2seq model, The encoder model is a simple LSTM model, taking four independent variables as inputs, the decoder is a simple LSTM model plus fully connected layer, taking the last hidden layer of encoder model and the NAO index of this year as input.
+<img src="/Users/liuquan/Documents/wechat/deep_learning/img3data.png" alt="image-20220730155425611" style="zoom:50%;" />
 
+Fig.3 The MPI-GE data 
 
+The project is based on Seq2seq model, The encoder model is a simple LSTM model, taking four independent variables as inputs, the decoder is a simple LSTM model plus fully connected layer. Three experiments are implemented. 
 
-Three experiments are implemented:
+1. The first experiment uses the LSTM as an encoder, and another LSTM as the decoder. In decoder, the NAO index of this year is also inputted. Use the MSE as the loss function.
 
-\1. The first experiment uses the MSE loss function.
+   <img src="/Users/liuquan/Library/Application Support/typora-user-images/image-20220730155723189.png" alt="image-20220730155723189" style="zoom:50%;" />
 
-\2. The second experiment uses a customed loss function to optimize the temporal variability.
+   Fig.4 work flow of Seq2seq model in this project
 
-\3. The third experiment is the same as the second, but the input to decoder changes from NAO index of this year, to the several spectrums (11 in this project) of NAO index of this year. such spectrums are gotten from Singular Spectrum analysis (SSA). 
+2. The second experiment uses the same frame as the first experiment, but a costumed loss function to optimise the temporal variability.
 
+3. The third experiment is the same as the second, but the input to decoder changes from NAO index of this year, to the several spectrums (11 in this project) of NAO index of this year. such spectrums are gotten from Singular Spectrum analysis (SSA). 
 
+# 代码
 
-![pastedGraphic.png](blob:file:///18709b26-831a-47ec-85b4-fb93ed62e86f)
+## 1. Import
 
-Fig. 1 work flow of Seq2seq model in this project
+```python
+##########################Load Libraries  ####################################
+import pandas as pd
+import numpy as np
+# import dask.dataframe as dd
+
+import matplotlib.pyplot as plt
+# import seaborn as sns
+import lightgbm as lgb
+from sklearn import preprocessing, metrics
+import warnings
+warnings.filterwarnings('ignore')
+from datetime import datetime, timedelta 
+from tqdm.notebook import tqdm_notebook as tqdm
+from torch.autograd import Variable
+import random 
+import os
+from matplotlib.pyplot import figure
+from fastprogress import master_bar, progress_bar
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler,StandardScaler
+import torch.nn.functional as F
+from torch.utils.data import Dataset
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import TimeSeriesSplit
+import torch.optim as optim
+
+%matplotlib inline
+
+from torch.utils.data import TensorDataset, DataLoader
+import scipy
+```
+
+## 2. Data Pre-process
+
+### Load data
+
+The data used in this project is alread pre-process in levante, including the normalization. Here the data is imported by numpy.
+
+The time series data is already pre-precess into sequences, and saved as .npy files.
+
+> shape of **X**: 15400,120,4     ➡ [ENSO,AST,SIC,SPVS]
+>
+> shape of **Y**: 15400,120,1     ➡ NAO of next year
+>
+> shape of **Z**: 15400,120,1     ➡ NAO of this year
+>
+> shape of **ZS**: 15400,120,11 ➡ SSA components of NAO in this year (will be used in experiment 3.)
+
+```python
+X = np.load("/content/drive/MyDrive/Deeplearning/X.npy")
+Y = np.load("/content/drive/MyDrive/Deeplearning/Y.npy")
+Z = np.load("/content/drive/MyDrive/Deeplearning/Z.npy")
+ZS = np.load("/content/drive/MyDrive/Deeplearning/ZS.npy")
+```
+
+```python
+X = np.float32(X)
+Y = np.float32(Y)
+Z = np.float32(Z)
+ZS = np.float32(ZS)
+```
+
+简单查看一下：
+```python
+fig,axes = plt.subplots(1,2,figsize = (12,3),sharey = True)
+axes[0].plot(X[0],)
+# axes[1].plot(Y[0],label = "nao of next year")
+axes[1].plot(Z[0],label = "nao of this year",color ='#ff7f0e' )
+
+axes[0].legend(['enso','tripole','sic','spvs'])
+axes[1].legend()
+axes[0].set_xlabel("days")
+axes[1].set_xlabel("days")
+
+axes[0].set_ylabel("anomaly index")
+```
+
+![img](/Users/liuquan/Documents/wechat/deep_learning/img5 index.png)
+
+再看一下我们experiment3要用到的不同频率的数据，数据处理方法可以参考之前推送中的SSA分解。
+
+![spectrum](/Users/liuquan/Documents/wechat/deep_learning/spectrum.png)
+
+### Change the data range to (-1,1)
+
+尽管数据已经做过标准化，但是数据范围是（0，1），我们这里将其转化为（-1，1）
+
+```python
+X = 2*X-1
+Y = 2*Y-1
+Z = 2*Z-1
+ZS = 2*ZS-1
+```
+
+### Train data and test data
+
+选择用cpu or gpu，google colab是可以用GPU的。
+
+```python
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("device is:",device)
+```
+
+将numpy array转化为tensor，建议参考上文分享的notebook。
+
+```python
+X = torch.from_numpy(X).to(device)
+Y = torch.from_numpy(Y).to(device)
+Z = torch.from_numpy(Z).to(device)
+ZS = torch.from_numpy(ZS).to(device)
+```
+
+深度学习训练一般不会一次性把所有的数据送进内存，这样一来内存吃紧，二来也影响训练。因此会将数据分解为长度一样的batches，每一次batch送进去之后计算loss，更新参数。此处batch_size是超参（超级参数，指模型中不会通过训练更新的参数）之一。
+```python
+def loader_dataset(x,y,z,batch_size = 2000):
+  	"""
+  	transform tensors to data loader. 
+    """
+    full_dataset = TensorDataset(x, y, z)  # combine the inputs and outputs into a PyTorch Dataset object
+    
+    # size
+    train_size = int(0.7 * len(full_dataset))
+    valid_size = int(0.2*len(full_dataset))
+    test_size = len(full_dataset) - train_size - valid_size
+    
+    # split
+    train_dataset, valid_dataset,test_dataset = torch.utils.data.random_split(full_dataset, [train_size,valid_size, test_size])
+    print(len(train_dataset))
+    print(len(valid_dataset))
+    print(len(test_dataset))
+    # data loader
+    train_loader = DataLoader(
+          train_dataset,
+          batch_size=batch_size,
+          shuffle=True)
+
+    valid_loader = DataLoader(
+        valid_dataset,
+        batch_size = batch_size,
+        shuffle = True
+    )
+
+    test_loader = DataLoader(
+            test_dataset,
+            batch_size=batch_size,
+            shuffle=True)
+    return train_loader,valid_loader,test_loader
+```
+
+```python
+train_loader,valid_loader,test_loader = loader_dataset(X,Y,Z)
+```
+
+# 3. Define Model
+
+## Encoder
+
+基本没有做什么改变，很容易就可以找着代码。
+
+```python
+class Encoder(nn.Module):
+    def __init__(self, seq_len, n_features, embedding_dim,num_layers ):
+        super(Encoder, self).__init__()
+
+        self.seq_len, self.n_features = seq_len, n_features
+        self.hidden_dim = embedding_dim
+        self.num_layers = num_layers
+        self.rnn1 = nn.LSTM(
+          input_size=n_features,
+          hidden_size=self.hidden_dim,
+          num_layers=num_layers,
+          batch_first=True,
+          dropout = 0.1
+        )
+        self.output_layer1 = nn.Linear(self.hidden_dim, 1)
+        self.tanh = nn.Tanh()
+
+    def forward(self, x):
+      """
+      simple process for LSTM.
+      **Arguments**
+      	*x* the input data.
+      **Return**
+      	*x,hidden,cell*
+      """
+
+        h_1 = Variable(torch.zeros(
+            self.num_layers, x.size(0), self.hidden_dim).to(device))
+        c_1 = Variable(torch.zeros(
+            self.num_layers, x.size(0), self.hidden_dim).to(device))
+              
+        x, (hidden, cell) = self.rnn1(x,(h_1, c_1))
+        x = self.output_layer1(x)
+        x = self.tanh(x)
+
+        return x,hidde, cell 
+```
+
+## Decoder
+
+```python
+class Decoder(nn.Module):
+    def __init__(self, seq_len, input_dim=64, n_features=1,num_layers=3,z_len=12):
+        super(Decoder, self).__init__()
+
+        self.seq_len, self.input_dim = seq_len, input_dim
+        self.hidden_dim, self.n_features =  input_dim, n_features
+        self.rnn1 = nn.LSTM(
+          input_size=n_features,
+          hidden_size=input_dim,
+          num_layers=num_layers,
+          batch_first=True,
+          dropout = 0.1
+        )
+
+        self.tanh = nn.Tanh()
+        self.output_layer1 = nn.Linear(self.hidden_dim, 1)
+        self.bn1 = nn.BatchNorm1d(1,affine=False)
+        self.output_layer2 = nn.Linear(self.hidden_dim,1)
+
+    def forward(self, x,input_hidden,input_cell,z_len):
+       
+        x = x.reshape((-1,1,z_len )) # z_len = 1 for exp1 and 2, 12 for exp3
+        x, (hidden_n, cell_n) = self.rnn1(x,(input_hidden,input_cell))
+
+        x = self.output_layer1(x)
+        x = self.tanh(x)
+
+        return x, hidden_n, cell_n
+```
+
